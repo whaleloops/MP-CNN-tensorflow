@@ -5,10 +5,10 @@ from model import *
 import time
 import os
 import datetime
-import tensorflow.python.debug as tf_debug
+from tensorflow.python import debug as tf_debug
 
-tf.app.flags.DEFINE_integer('embedding_dim', 50, 'The dimension of the word embedding')
-tf.app.flags.DEFINE_integer('num_filters_A', 20, 'The number of filters in block A')
+tf.app.flags.DEFINE_integer('embedding_dim', 300, 'The dimension of the word embedding')
+tf.app.flags.DEFINE_integer('num_filters_A', 300, 'The number of filters in block A')
 tf.app.flags.DEFINE_integer('num_filters_B', 20, 'The number of filters in block B')
 tf.app.flags.DEFINE_integer('n_hidden', 150, 'number of hidden units in the fully connected layer')
 tf.app.flags.DEFINE_integer('sentence_length', 100, 'max size of sentence')
@@ -33,7 +33,7 @@ conf = tf.app.flags.FLAGS
 conf._parse_flags()
 
 #glove是载入的次向量。glove.d是单词索引字典<word, index>，glove.g是词向量矩阵<词个数,300>
-glove = emb.GloVe(N=50)
+glove = emb.GloVe(N=300)
 
 #-------------------------------------Loading data----------------------------------------------#
 print ("Loading data...")

@@ -145,7 +145,13 @@ class MPCNN_Layer():
                     for k in range(self.num_filters[1]):
                         fea_b.append(comU1(sent1[i][j][:, :, k], sent2[i][j][:, :, k]))
         #self.fea_b = fea_b
-        return tf.concat(fea_h + fea_b, 1)
+        print 'checkpoint1'
+        print len(fea_h)
+        print len(fea_a)
+        print len(fea_b)
+        result = tf.concat(fea_a + fea_h + fea_b, 1)
+        print result.get_shape()
+        return result
 
     def similarity_measure_layer(self):
         fea = self.similarity_sentence_layer()
