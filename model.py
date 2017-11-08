@@ -17,6 +17,7 @@ class MPCNN_Layer():
         '''
         self.embedding_size = embedding_size
         self.filter_sizes = filter_sizes
+        self.ngram = len(filter_sizes)-1
         self .num_filters = num_filters
         self.poolings = [tf.reduce_max, tf.reduce_min, tf.reduce_mean]
 
@@ -27,18 +28,23 @@ class MPCNN_Layer():
 
         self.W1 = [init_weight([filter_sizes[0], embedding_size, 1, num_filters[0]], "W1_0"),
                    init_weight([filter_sizes[1], embedding_size, 1, num_filters[0]], "W1_1"),
-                   init_weight([filter_sizes[2], embedding_size, 1, num_filters[0]], "W1_2")]
+                   init_weight([filter_sizes[2], embedding_size, 1, num_filters[0]], "W1_2"),
+                   init_weight([filter_sizes[3], embedding_size, 1, num_filters[0]], "W1_3")]
         self.b1 = [tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_0"),
                    tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_1"),
-                   tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_2")]
+                   tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_2"),
+                   tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_3")]
 
         self.W2 = [init_weight([filter_sizes[0], embedding_size, 1, num_filters[1]], "W2_0"),
-                   init_weight([filter_sizes[1], embedding_size, 1, num_filters[1]], "W2_1")]
+                   init_weight([filter_sizes[1], embedding_size, 1, num_filters[1]], "W2_1"),
+                   init_weight([filter_sizes[2], embedding_size, 1, num_filters[1]], "W2_2")]
         self.b2 = [tf.Variable(tf.constant(0.1, shape=[num_filters[1], embedding_size]), "b2_0"),
-                   tf.Variable(tf.constant(0.1, shape=[num_filters[1], embedding_size]), "b2_1")]
-        self.h = num_filters[0]*len(self.poolings)*2 + \
-                 num_filters[1]*(len(self.poolings)-1)*(len(filter_sizes)-1)*3 #+ \
-                 #len(self.poolings)*len(filter_sizes)*len(filter_sizes)*3
+                   tf.Variable(tf.constant(0.1, shape=[num_filters[1], embedding_size]), "b2_1"),
+                   tf.Variable(tf.constant(0.1, shape=[num_filters[1], embedding_size]), "b2_2")]
+        items = (self.ngram + 1)*3
+        # inputNum = 2*items*items/3+NumFilter*items*items/3+6*NumFilter+(2+NumFilter)*2*ngram*conceptFNum --PoinPercpt model!
+        self.h = 2*items*items/3+num_filters[0]*items*items/3+6*num_filters[0]+(2+num_filters[0])*2*self.ngram*num_filters[1]
+
         self.Wh = tf.Variable(tf.random_normal([self.h, n_hidden], stddev=0.01), name='Wh')
         self.bh = tf.Variable(tf.constant(0.1, shape=[n_hidden]), name="bh")
 
@@ -145,12 +151,12 @@ class MPCNN_Layer():
                     for k in range(self.num_filters[1]):
                         fea_b.append(comU1(sent1[i][j][:, :, k], sent2[i][j][:, :, k]))
         #self.fea_b = fea_b
-        print 'checkpoint1'
-        print len(fea_h)
-        print len(fea_a)
-        print len(fea_b)
+        # print 'checkpoint1'
+        # print len(fea_h)
+        # print len(fea_a)
+        # print len(fea_b)
         result = tf.concat(fea_a + fea_h + fea_b, 1)
-        print result.get_shape()
+        # print result.get_shape()
         return result
 
     def similarity_measure_layer(self):

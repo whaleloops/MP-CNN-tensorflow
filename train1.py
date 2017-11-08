@@ -5,6 +5,7 @@ from model import *
 import time
 import os
 import datetime
+import gc
 from tensorflow.python import debug as tf_debug
 
 tf.app.flags.DEFINE_integer('embedding_dim', 300, 'The dimension of the word embedding')
@@ -15,7 +16,7 @@ tf.app.flags.DEFINE_integer('sentence_length', 100, 'max size of sentence')
 tf.app.flags.DEFINE_integer('num_classes', 6, 'num of the labels')
 
 tf.app.flags.DEFINE_integer('num_epochs', 10, 'Number of epochs to be trained')
-tf.app.flags.DEFINE_integer('batch_size', 128, 'size of mini batch')
+tf.app.flags.DEFINE_integer('batch_size', 32, 'size of mini batch')
 
 tf.app.flags.DEFINE_integer("display_step", 100, "Evaluate model on dev set after this many steps (default: 100)")
 tf.app.flags.DEFINE_integer("evaluate_every", 100, "Evaluate model on dev set after this many steps (default: 100)")
@@ -28,7 +29,7 @@ tf.app.flags.DEFINE_float('l2_reg_lambda', 1e-4, 'regularization parameter')
 tf.app.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.app.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
-filter_size = [1,2,100]
+filter_size = [1,2,3,100]
 conf = tf.app.flags.FLAGS
 conf._parse_flags()
 
@@ -49,7 +50,7 @@ Xtest, ytest = load_set(glove, path='./sts/semeval-sts/2016')
 
 #-------------------------------------training the network----------------------------------------------#
 with tf.Session() as sess:
-    sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+    # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
     input_1 = tf.placeholder(tf.int32, [None, conf.sentence_length], name="input_x1")
     input_2 = tf.placeholder(tf.int32, [None, conf.sentence_length], name="input_x2")
     input_3 = tf.placeholder(tf.int32, [None, conf.num_classes], name="input_y")
@@ -63,6 +64,7 @@ with tf.Session() as sess:
         input_x2 = tf.reshape(s1_embed, [-1, conf.sentence_length, conf.embedding_dim, 1])
         input_y = tf.reshape(input_3, [-1, conf.num_classes])
 
+    print input_x1.get_shape()
     # sent1_unstack = tf.unstack(input_x1, axis=1)
     # sent2_unstack = tf.unstack(input_x2, axis=1)
     # D = []
@@ -96,35 +98,37 @@ with tf.Session() as sess:
     out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
     print("Writing to {}\n".format(out_dir))
 
-    loss_summary = tf.summary.scalar("loss", cost)
-    acc_summary = tf.summary.scalar("accuracy", acc)
+    # loss_summary = tf.summary.scalar("loss", cost)
+    # acc_summary = tf.summary.scalar("accuracy", acc)
 
-    train_summary_op = tf.summary.merge([loss_summary, acc_summary])
-    train_summary_dir = os.path.join(out_dir, "summaries", "train")
-    train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
+    # train_summary_op = tf.summary.merge([loss_summary, acc_summary])
+    # train_summary_dir = os.path.join(out_dir, "summaries", "train")
+    # train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
 
-    dev_summary_op = tf.summary.merge([loss_summary, acc_summary])
-    dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
-    dev_summary_writer = tf.summary.FileWriter(dev_summary_dir, sess.graph)
+    # dev_summary_op = tf.summary.merge([loss_summary, acc_summary])
+    # dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
+    # dev_summary_writer = tf.summary.FileWriter(dev_summary_dir, sess.graph)
 
-    checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
-    checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-    if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
-    saver = tf.train.Saver(tf.global_variables(), max_to_keep=conf.num_checkpoints)
+    # checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
+    # checkpoint_prefix = os.path.join(checkpoint_dir, "model")
+    # if not os.path.exists(checkpoint_dir):
+    #     os.makedirs(checkpoint_dir)
+    # saver = tf.train.Saver(tf.global_variables(), max_to_keep=conf.num_checkpoints)
 
     init = tf.global_variables_initializer().run()
 
     for j in range(10):
-        for i in range(0, 20000, conf.batch_size):
+        for i in range(0, 22200, conf.batch_size): #TODO: 160 to 22200
             x1 = Xtrain[0][i:i + conf.batch_size]
             x2 = Xtrain[1][i:i + conf.batch_size]
             y = ytrain[i:i + conf.batch_size]
-            _, summaries, accc, loss = sess.run([train_step, train_summary_op, acc, cost],
+            # _, summaries, accc, loss = sess.run([train_step, train_summary_op, acc, cost],
+            #                          feed_dict={input_1: x1, input_2: x2, input_3: y, dropout_keep_prob: 1.0})
+            _, accc, loss = sess.run([train_step, acc, cost],
                                      feed_dict={input_1: x1, input_2: x2, input_3: y, dropout_keep_prob: 1.0})
             time_str = datetime.datetime.now().isoformat()
             print("{}: loss {:g}, acc {:g}".format(time_str, loss, accc))
-            train_summary_writer.add_summary(summaries)
+            # train_summary_writer.add_summary(summaries)
         print("\nEvaluation:")
         accc = sess.run(acc, feed_dict={input_1: Xtest[0], input_2: Xtest[1], input_3: ytest, dropout_keep_prob: 1.0})
         print "test accuracy:", accc
