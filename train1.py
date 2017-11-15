@@ -121,8 +121,6 @@ with tf.Session() as sess:
             x1 = Xtrain[0][i:i + conf.batch_size]
             x2 = Xtrain[1][i:i + conf.batch_size]
             y = ytrain[i:i + conf.batch_size]
-            print y.shape()
-            print y[0:2,:]
             # _, summaries, accc, loss = sess.run([train_step, train_summary_op, acc, cost],
             #                          feed_dict={input_1: x1, input_2: x2, input_3: y, dropout_keep_prob: 1.0})
             _, accc, loss = sess.run([train_step, acc, cost],
