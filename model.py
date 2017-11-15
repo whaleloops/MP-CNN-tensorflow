@@ -28,12 +28,10 @@ class MPCNN_Layer():
 
         self.W1 = [init_weight([filter_sizes[0], embedding_size, 1, num_filters[0]], "W1_0"),
                    init_weight([filter_sizes[1], embedding_size, 1, num_filters[0]], "W1_1"),
-                   init_weight([filter_sizes[2], embedding_size, 1, num_filters[0]], "W1_2"),
-                   init_weight([filter_sizes[3], embedding_size, 1, num_filters[0]], "W1_3")]
+                   init_weight([filter_sizes[2], embedding_size, 1, num_filters[0]], "W1_2")]
         self.b1 = [tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_0"),
                    tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_1"),
-                   tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_2"),
-                   tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_3")]
+                   tf.Variable(tf.constant(0.1, shape=[num_filters[0]]), "b1_2")]
 
         self.W2 = [init_weight([filter_sizes[0], embedding_size, 1, num_filters[1]], "W2_0"),
                    init_weight([filter_sizes[1], embedding_size, 1, num_filters[1]], "W2_1"),
@@ -41,9 +39,9 @@ class MPCNN_Layer():
         self.b2 = [tf.Variable(tf.constant(0.1, shape=[num_filters[1], embedding_size]), "b2_0"),
                    tf.Variable(tf.constant(0.1, shape=[num_filters[1], embedding_size]), "b2_1"),
                    tf.Variable(tf.constant(0.1, shape=[num_filters[1], embedding_size]), "b2_2")]
-        items = (self.ngram + 1)*3
         # inputNum = 2*items*items/3+NumFilter*items*items/3+6*NumFilter+(2+NumFilter)*2*ngram*conceptFNum --PoinPercpt model!
-        self.h = 2*items*items/3+num_filters[0]*items*items/3+6*num_filters[0]+(2+num_filters[0])*2*self.ngram*num_filters[1]
+        # self.h = 2*items*items/3 + self.num_filters[0]*items*items/3 + 6*self.num_filters[0] + (2+self.num_filters[0])*2*self.ngram*self.num_filters[1]
+        self.h = 2*(3*self.num_filters[0]) + (self.num_filters[0]+2)*(3*(self.ngram + 1)*(self.ngram + 1)) + (self._embed_dim+2)*(2*self.num_filters[1]*3)
 
         self.Wh = tf.Variable(tf.random_normal([self.h, n_hidden], stddev=0.01), name='Wh')
         self.bh = tf.Variable(tf.constant(0.1, shape=[n_hidden]), name="bh")
@@ -92,21 +90,26 @@ class MPCNN_Layer():
         return pool
 
     def bulit_block_A(self, x):
-        #bulid block A and cal the similarity according to algorithm 1
-        out = []
-        with tf.name_scope("bulid_block_A"):
-            for pooling in self.poolings:
-                pools = []
-                for i, ws in enumerate(self.filter_sizes):
-                    #print x.get_shape(), self.W1[i].get_shape()
-                    with tf.name_scope("conv-pool-%s" %ws):
-                        conv = tf.nn.conv2d(x, self.W1[i], strides=[1, 1, 1, 1], padding="VALID")
-                        #print conv.get_shape()
-                        conv = tf.nn.relu(conv + self.b1[i])  # [batch_size, sentence_length-ws+1, 1, num_filters_A]
-                        pool = pooling(conv, axis=1)
-                    pools.append(pool)
-                out.append(pools)
-            return out
+      #bulid block A and cal the similarity according to algorithm 1
+      out = []
+      with tf.name_scope("bulid_block_A"):
+        for pooling in self.poolings:
+          pools = []
+          with tf.name_scope("pool-ws-infinite"):
+            pool = pooling(x, axis=1)
+            pools.append(tf.reshape(pool, [-1, 1, self._embed_dim]))
+          for i, ws in enumerate(self.filter_sizes[:-1]): # ws: window size
+            #print x.get_shape(), self.W1[i].get_shape()
+            with tf.name_scope("conv-ws%d" %ws):
+              conv = tf.nn.conv2d(x, self.W1[i], strides=[1, 1, 1, 1], padding="VALID")
+              #print conv.get_shape()
+              conv = tf.nn.relu(conv + self.b1[i])  # [batch_size, sentence_length-ws+1, 1, num_filters_A]
+            with tf.name_scope("pool-ws%d" %ws):
+              pool = pooling(conv, axis=1)# (batch_size, 1, num_filters_A)
+            pools.append(pool)
+          out.append(pools)
+        return out
+
 
     def bulid_block_B(self, x):
         out = []
